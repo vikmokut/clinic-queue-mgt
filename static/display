@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Now Serving</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="relative min-h-screen overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950"></div>
+        <div class="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl"></div>
+        <div class="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-fuchsia-400/20 blur-3xl"></div>
+
+        <div class="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-10">
+            <header class="flex flex-col gap-4">
+                <div>
+                    <p class="text-sm uppercase tracking-[0.2em] text-emerald-300">Display Board</p>
+                    <h1 class="mt-2 text-3xl font-semibold text-white sm:text-4xl">Now Serving</h1>
+                    <p class="mt-2 text-slate-300">Large text view for waiting areas. Updates live or auto-refreshes.</p>
+                </div>
+            </header>
+
+            <main class="mt-10 grid flex-1 gap-6 lg:grid-cols-2">
+                <section class="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-black/30">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-semibold text-white">Pharmacy</h2>
+                        <span class="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 py-1 text-sm font-semibold text-emerald-200">Now Serving</span>
+                    </div>
+                    <p id="now-pharmacy" class="mt-6 text-6xl font-semibold text-white sm:text-7xl">—</p>
+                    <p class="mt-4 text-lg text-slate-300">Next up: <span id="next-pharmacy" class="font-semibold text-emerald-200">—</span></p>
+                </section>
+
+                <section class="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-black/30">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-semibold text-white">Laboratory</h2>
+                        <span class="rounded-full border border-indigo-400/40 bg-indigo-400/10 px-4 py-1 text-sm font-semibold text-indigo-200">Now Serving</span>
+                    </div>
+                    <p id="now-lab" class="mt-6 text-6xl font-semibold text-white sm:text-7xl">—</p>
+                    <p class="mt-4 text-lg text-slate-300">Next up: <span id="next-lab" class="font-semibold text-indigo-200">—</span></p>
+                </section>
+
+                <section class="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-black/30">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-semibold text-white">Clinic</h2>
+                        <span class="rounded-full border border-fuchsia-400/40 bg-fuchsia-400/10 px-4 py-1 text-sm font-semibold text-fuchsia-200">Now Serving</span>
+                    </div>
+                    <p id="now-clinic" class="mt-6 text-6xl font-semibold text-white sm:text-7xl">—</p>
+                    <p class="mt-4 text-lg text-slate-300">Next up: <span id="next-clinic" class="font-semibold text-fuchsia-200">—</span></p>
+                </section>
+
+                <section class="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-black/30">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-semibold text-white">Referral & Appointment</h2>
+                        <span class="rounded-full border border-cyan-400/40 bg-cyan-400/10 px-4 py-1 text-sm font-semibold text-cyan-200">Now Serving</span>
+                    </div>
+                    <div class="mt-6 space-y-6">
+                        <div>
+                            <p class="text-sm uppercase tracking-wide text-cyan-200">Referral</p>
+                            <p id="now-referral" class="mt-2 text-4xl font-semibold text-white sm:text-5xl">—</p>
+                            <p class="mt-2 text-base text-slate-300">Next: <span id="next-referral" class="font-semibold text-cyan-200">—</span></p>
+                        </div>
+                        <div>
+                            <p class="text-sm uppercase tracking-wide text-cyan-200">Appointment</p>
+                            <p id="now-appointment" class="mt-2 text-4xl font-semibold text-white sm:text-5xl">—</p>
+                            <p class="mt-2 text-base text-slate-300">Next: <span id="next-appointment" class="font-semibold text-cyan-200">—</span></p>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="mt-8 text-sm text-slate-400">
+                <p id="status">Connecting to live queue…</p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById("status");
+        const fields = {
+            pharmacy: {
+                now: document.getElementById("now-pharmacy"),
+                next: document.getElementById("next-pharmacy")
+            },
+            lab: {
+                now: document.getElementById("now-lab"),
+                next: document.getElementById("next-lab")
+            },
+            clinic: {
+                now: document.getElementById("now-clinic"),
+                next: document.getElementById("next-clinic")
+            },
+            referral: {
+                now: document.getElementById("now-referral"),
+                next: document.getElementById("next-referral")
+            },
+            appointment: {
+                now: document.getElementById("now-appointment"),
+                next: document.getElementById("next-appointment")
+            }
+        };
+
+        let fallbackTimer = null;
+        let ws;
+
+        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+
+        function connectWebSocket() {
+            ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                statusEl.textContent = "Live connection active.";
+                stopFallback();
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                renderQueues(data);
+                statusEl.textContent = "Live connection active.";
+            };
+
+            ws.onclose = () => {
+                statusEl.textContent = "Live connection lost. Switching to auto-refresh…";
+                startFallback();
+                retryWebSocket();
+            };
+
+            ws.onerror = () => {
+                statusEl.textContent = "Live connection error. Switching to auto-refresh…";
+                startFallback();
+                retryWebSocket();
+            };
+        }
+
+        function retryWebSocket() {
+            setTimeout(() => {
+                if (ws.readyState === WebSocket.CLOSED) {
+                    connectWebSocket();
+                }
+            }, 5000);
+        }
+
+        function startFallback() {
+            if (fallbackTimer) return;
+            fallbackTimer = setInterval(fetchQueues, 5000);
+            fetchQueues();
+        }
+
+        function stopFallback() {
+            if (!fallbackTimer) return;
+            clearInterval(fallbackTimer);
+            fallbackTimer = null;
+        }
+
+        async function fetchQueues() {
+            try {
+                const response = await fetch("/api/queues", { cache: "no-store" });
+                if (!response.ok) return;
+                const data = await response.json();
+                renderQueues(data);
+            } catch (error) {
+                // ignore fetch errors
+            }
+        }
+
+        function renderQueues(data) {
+            Object.keys(fields).forEach((key) => {
+                const queue = data[key] || [];
+                fields[key].now.textContent = queue.length ? queue[0] : "—";
+                fields[key].next.textContent = queue.length > 1 ? queue[1] : "—";
+            });
+        }
+
+        connectWebSocket();
+        startFallback();
+    </script>
+</body>
+</html>
